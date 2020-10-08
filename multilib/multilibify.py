@@ -48,11 +48,13 @@ def save_dict_file(dict_data, dict_file):
             raise ValueError(f"Unknown format of {dict_file}")
         writer(dict_data, f)
 
-def merge_dicts(base_dict, update_dict):
+def merge_dicts(base_dict, update_dict, append_list=True):
     merged_dict = copy.deepcopy(base_dict)
     for upd_key, upd_val in update_dict.items():
         if isinstance(merged_dict.get(upd_key), dict) and isinstance(upd_val, dict):
             merged_dict[upd_key] = merge_dicts(merged_dict[upd_key], upd_val)
+        elif append_list and isinstance(merged_dict.get(upd_key), list) and isinstance(upd_val, list):
+            merged_dict[upd_key] += upd_val
         else:
             merged_dict[upd_key] = upd_val
     return merged_dict
@@ -89,7 +91,12 @@ def multilibify(holder_object, holder_file, base_dir=None, variants=None):
             modules.append(orig_module)
             continue
 
+        module_variants = {}
         for v, props in variants.items():
+            module_props = orig_module.pop(VARIANTS[v]["prop"], {})
+            module_variants[v] = merge_dicts(props, module_props, append_list=False)
+
+        for v, props in module_variants.items():
             new_module = merge_dicts(orig_module, props)
             new_module["name"] = "{0}{1}".format(orig_module["name"], VARIANTS[v].get("name-suffix", ""))
             if "modules" in new_module:
